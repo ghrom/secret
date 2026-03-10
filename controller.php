@@ -21,7 +21,7 @@ header('Content-Type: application/json');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 
-$DB_FILE = __DIR__ . '/secrets.db';
+$DB_FILE = __DIR__ . '/model.sqlite';
 $MAX_SIZE = 102400; // 100KB
 $EXPIRY = 86400;    // 24 hours
 $RATE_LIMIT = 20;   // creates per IP per hour

@@ -35,7 +35,8 @@ Copy three files to any PHP-enabled web server:
 ```
 secret/
   index.html     Single-page app (HTML + CSS + JS, all inline)
-  api.php        REST backend (~140 lines, PHP + SQLite)
+  controller.php  Controller — REST backend (~140 lines, PHP)
+  model.sqlite     Model — auto-created by controller on first use
   .htaccess      Denies direct access to the SQLite database
 ```
 
@@ -46,7 +47,7 @@ Requirements:
 
 ```bash
 # Example
-cp index.html api.php .htaccess /var/www/yoursite/secret/
+cp index.html controller.php .htaccess /var/www/yoursite/secret/
 chown www-data:www-data /var/www/yoursite/secret/
 ```
 
