@@ -83,6 +83,6 @@ And because the existing solutions are either SaaS platforms that want your mone
 
 ## License
 
-MIT — do whatever you want with it.
+Propercode had this idea. Feel free to have this idea as well.
 
-Made by [Propercode](https://propercode.co.uk)
+[ultimatelaw.org/79](https://ultimatelaw.org/79/)
