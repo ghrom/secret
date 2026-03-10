@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One-Time Secret — Propercode</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --border: #2a2d3a;
+    --text: #e4e4e7;
+    --muted: #71717a;
+    --accent: #6366f1;
+    --accent-glow: rgba(99, 102, 241, 0.3);
+    --danger: #ef4444;
+    --success: #22c55e;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 50%, rgba(139, 92, 246, 0.05) 0%, transparent 50%);
+  }
+
+  .container {
+    width: 100%;
+    max-width: 560px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.6;
+  }
+
+  /* Lock icon */
+  .lock {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1.5rem;
+    position: relative;
+  }
+
+  .lock-body {
+    width: 40px;
+    height: 32px;
+    background: var(--accent);
+    border-radius: 6px;
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.6s ease;
+  }
+
+  .lock-body::after {
+    content: '';
+    width: 8px;
+    height: 12px;
+    background: var(--bg);
+    border-radius: 2px 2px 4px 4px;
+  }
+
+  .lock-shackle {
+    width: 24px;
+    height: 20px;
+    border: 4px solid var(--accent);
+    border-bottom: none;
+    border-radius: 12px 12px 0 0;
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: right bottom;
+  }
+
+  .lock.unlocked .lock-shackle {
+    transform: translateX(-50%) rotate(30deg) translateY(-6px);
+  }
+
+  .lock.unlocked .lock-body {
+    background: var(--success);
+  }
+
+  .lock.destroyed .lock-body {
+    background: var(--danger);
+  }
+
+  .lock.destroyed .lock-shackle {
+    border-color: var(--danger);
+    transform: translateX(-50%) rotate(30deg) translateY(-6px);
+  }
+
+  h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    text-align: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 140px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.85rem;
+    padding: 1rem;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  textarea::placeholder {
+    color: var(--muted);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.85rem 1.5rem;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 1rem;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+
+  .btn-primary:hover { background: #5558e6; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-copy {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-copy:hover { border-color: var(--accent); }
+
+  .btn-new {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    margin-top: 0.75rem;
+  }
+
+  .btn-new:hover { color: var(--text); border-color: var(--accent); }
+
+  /* Link display */
+  .link-box {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    word-break: break-all;
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.8rem;
+    color: var(--accent);
+    line-height: 1.6;
+    user-select: all;
+  }
+
+  /* Secret display */
+  .secret-box {
+    background: var(--bg);
+    border: 1px solid var(--success);
+    border-radius: 10px;
+    padding: 1rem;
+    font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.6;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+
+  /* Animations */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 0 20px var(--accent-glow); }
+    50% { box-shadow: 0 0 40px var(--accent-glow); }
+  }
+
+  @keyframes burn {
+    0% { opacity: 1; filter: blur(0) brightness(1); }
+    40% { opacity: 0.8; filter: blur(1px) brightness(1.2); color: #f97316; }
+    100% { opacity: 0; filter: blur(8px) brightness(0.5); transform: translateY(-10px); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .animate-in {
+    animation: fadeInUp 0.5s ease both;
+  }
+
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite;
+  }
+
+  .animate-burn {
+    animation: burn 1.5s ease-out forwards;
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: inline-block;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+  }
+
+  .badge-zk {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--accent);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+  }
+
+  .badge-destroyed {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 1.5s ease infinite;
+  }
+
+  .copied-toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--success);
+    color: white;
+    padding: 0.6rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 100;
+  }
+
+  .copied-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  footer {
+    margin-top: 2rem;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+
+  footer a {
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  footer a:hover { color: var(--accent); }
+
+  .info {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(99, 102, 241, 0.08);
+    border-radius: 8px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .error-text {
+    color: var(--danger);
+    text-align: center;
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="card">
+
+    <!-- CREATE VIEW -->
+    <div id="view-create">
+      <div class="lock" id="lock-create">
+        <div class="lock-shackle"></div>
+        <div class="lock-body"></div>
+      </div>
+      <h1>One-Time Secret</h1>
+      <p class="subtitle">Share secrets that self-destruct after a single viewing.<br>Zero-knowledge encryption — the server never sees your data.</p>
+      <div style="text-align:center">
+        <span class="badge badge-zk"><span class="badge-dot"></span> End-to-end encrypted</span>
+      </div>
+      <textarea id="secret-input" placeholder="Paste your secret here — PGP key, password, credentials, anything sensitive..." spellcheck="false"></textarea>
+      <button class="btn btn-primary" id="btn-create" onclick="createSecret()">Create Secret Link</button>
+      <div class="info">Your secret is encrypted in your browser before it leaves. The encryption key is embedded in the URL fragment and never sent to the server. Even we cannot read it.</div>
+      <div id="create-error" class="error-text hidden"></div>
+    </div>
+
+    <!-- LINK VIEW -->
+    <div id="view-link" class="hidden">
+      <div class="lock" id="lock-link">
+        <div class="lock-shackle"></div>
+        <div class="lock-body"></div>
+      </div>
+      <h1>Secret Created</h1>
+      <p class="subtitle">Share this link. It will work exactly once.</p>
+      <div class="link-box animate-glow" id="secret-link"></div>
+      <button class="btn btn-copy" onclick="copyLink()">Copy Link</button>
+      <button class="btn btn-new" onclick="resetCreate()">Create Another</button>
+      <div class="info">Once the recipient opens this link, the secret is permanently deleted from the server. The link will never work again.</div>
+    </div>
+
+    <!-- VIEW SECRET -->
+    <div id="view-secret" class="hidden">
+      <div class="lock unlocked" id="lock-secret">
+        <div class="lock-shackle"></div>
+        <div class="lock-body"></div>
+      </div>
+      <h1>Secret Revealed</h1>
+      <p class="subtitle">This secret has been decrypted and destroyed from the server.</p>
+      <div class="secret-box animate-in" id="secret-content"></div>
+      <button class="btn btn-copy" onclick="copySecret()">Copy Secret</button>
+      <button class="btn btn-new" onclick="location.href=location.pathname">Create a Secret</button>
+    </div>
+
+    <!-- DESTROYED VIEW -->
+    <div id="view-gone" class="hidden">
+      <div class="lock destroyed" id="lock-gone">
+        <div class="lock-shackle"></div>
+        <div class="lock-body"></div>
+      </div>
+      <h1>Secret Destroyed</h1>
+      <p class="subtitle">This secret has already been viewed and permanently deleted,<br>or it expired after 24 hours.</p>
+      <div style="text-align:center">
+        <span class="badge badge-destroyed"><span class="badge-dot"></span> No longer available</span>
+      </div>
+      <button class="btn btn-new" onclick="location.href=location.pathname">Create a New Secret</button>
+    </div>
+
+    <!-- LOADING VIEW -->
+    <div id="view-loading" class="hidden">
+      <div class="lock" id="lock-loading">
+        <div class="lock-shackle"></div>
+        <div class="lock-body"></div>
+      </div>
+      <h1>Retrieving Secret...</h1>
+      <p class="subtitle" style="display:flex;align-items:center;justify-content:center;gap:0.5rem">
+        <span class="spinner"></span> Decrypting
+      </p>
+    </div>
+
+  </div>
+
+  <footer>
+    <a href="https://propercode.co.uk">propercode.co.uk</a> — zero-knowledge secret sharing
+  </footer>
+</div>
+
+<div class="copied-toast" id="toast">Copied to clipboard</div>
+
+<script>
+const API = 'api.php';
+
+function show(id) {
+  document.querySelectorAll('[id^="view-"]').forEach(el => el.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function showError(msg) {
+  const el = document.getElementById('create-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg || 'Copied to clipboard';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// --- Crypto helpers ---
+
+async function generateKey() {
+  return crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']);
+}
+
+async function exportKey(key) {
+  const raw = await crypto.subtle.exportKey('raw', key);
+  return bufToBase64url(new Uint8Array(raw));
+}
+
+async function importKey(b64) {
+  const raw = base64urlToBuf(b64);
+  return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+}
+
+async function encrypt(text, key) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(text);
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded);
+  return {
+    ciphertext: bufToBase64url(new Uint8Array(ciphertext)),
+    iv: bufToBase64url(iv)
+  };
+}
+
+async function decrypt(ciphertextB64, ivB64, key) {
+  const ciphertext = base64urlToBuf(ciphertextB64);
+  const iv = base64urlToBuf(ivB64);
+  const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+  return new TextDecoder().decode(decrypted);
+}
+
+function bufToBase64url(buf) {
+  let s = '';
+  buf.forEach(b => s += String.fromCharCode(b));
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64urlToBuf(b64) {
+  b64 = b64.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64.length % 4) b64 += '=';
+  const s = atob(b64);
+  const buf = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) buf[i] = s.charCodeAt(i);
+  return buf;
+}
+
+// --- Actions ---
+
+let createdLink = '';
+
+async function createSecret() {
+  const input = document.getElementById('secret-input');
+  const btn = document.getElementById('btn-create');
+  const text = input.value.trim();
+
+  if (!text) { input.focus(); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Encrypting...';
+  document.getElementById('create-error').classList.add('hidden');
+
+  try {
+    const key = await generateKey();
+    const { ciphertext, iv } = await encrypt(text, key);
+    const keyStr = await exportKey(key);
+
+    const resp = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ciphertext, iv })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error || `Server error ${resp.status}`);
+    }
+
+    const { id } = await resp.json();
+    const base = location.origin + location.pathname;
+    createdLink = `${base}#${id}-${keyStr}`;
+
+    document.getElementById('secret-link').textContent = createdLink;
+    show('view-link');
+    input.value = '';
+  } catch (e) {
+    showError(e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'Create Secret Link';
+  }
+}
+
+async function viewSecret(id, keyStr) {
+  show('view-loading');
+
+  try {
+    const resp = await fetch(`${API}?id=${encodeURIComponent(id)}`);
+
+    if (resp.status === 404) {
+      show('view-gone');
+      return;
+    }
+
+    if (!resp.ok) throw new Error(`Server error ${resp.status}`);
+
+    const { ciphertext, iv } = await resp.json();
+    const key = await importKey(keyStr);
+    const plaintext = await decrypt(ciphertext, iv, key);
+
+    // Small delay for dramatic effect
+    await new Promise(r => setTimeout(r, 600));
+
+    document.getElementById('secret-content').textContent = plaintext;
+    show('view-secret');
+  } catch (e) {
+    show('view-gone');
+  }
+}
+
+function copyLink() {
+  navigator.clipboard.writeText(createdLink).then(() => toast('Link copied'));
+}
+
+function copySecret() {
+  const text = document.getElementById('secret-content').textContent;
+  navigator.clipboard.writeText(text).then(() => toast('Secret copied'));
+}
+
+function resetCreate() {
+  createdLink = '';
+  show('view-create');
+  document.getElementById('secret-input').focus();
+}
+
+// --- Init ---
+
+(function init() {
+  const hash = location.hash.slice(1);
+  if (!hash) {
+    show('view-create');
+    return;
+  }
+
+  const sep = hash.indexOf('-');
+  if (sep < 0) {
+    show('view-gone');
+    return;
+  }
+
+  const id = hash.substring(0, sep);
+  const keyStr = hash.substring(sep + 1);
+
+  if (id.length !== 32 || !keyStr) {
+    show('view-gone');
+    return;
+  }
+
+  // Clear the hash from the URL bar (don't leave key visible in history)
+  history.replaceState(null, '', location.pathname);
+
+  viewSecret(id, keyStr);
+})();
+</script>
+
+</body>
+</html>
